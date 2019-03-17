@@ -10,6 +10,8 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +19,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -36,17 +39,28 @@ public class a2_recordVoice extends AppCompatActivity {
     private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
     private int sampleRate = 16000;//设置采样频率
     private int bufferSizeInBytes;
-    private static String fileName = null; //录音文件名+目录
-    private MediaPlayer player = null; //是否播放录音
-    boolean mStartPlaying = true;    //是否播放录音
     /*
     权限获取
      */
     private static final int REQUEST_STORAGE_PERMISSION = 101;
     String[] permissions1 = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     String [] permissions2 = {Manifest.permission.RECORD_AUDIO};
+    /*
+    *腾讯云api参数配置
+     */
+    //用户需修改为自己的SecretId，SecretKey
+    String SecretId = "AKIDMbgeS5lotx3yhF5rZDgJl1AE9tTtE91i";
+    String SecretKey = "d6NadV5au480my2vhKmIh0C8yd6QH1gG";
+    // 识别引擎 8k or 16k
+    String EngSerViceType = "16k";
+    // 语音数据来源 0:语音url or 1:语音数据bodydata(data数据大小要小于800k)
+    String SourceType = "1";
+    //音频格式 wav，mp3
+    String VoiceFormat = "wav";
+    //录音文件名+目录
+    private static String fileName = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,16 +68,18 @@ public class a2_recordVoice extends AppCompatActivity {
         RecorderInit();        //初始化AudioRecorder
         Button luyin = (Button)findViewById(R.id.luyin);
         Button luyin_stop = (Button)findViewById(R.id.luyin_stop);
+        Button shibie =(Button)findViewById(R.id.recognize_voice);
+        final TextView receive = (TextView)findViewById(R.id.receive);
         luyin.setOnClickListener(new View.OnClickListener() {//开始录音
-
-
             @Override
             public void onClick(View v) {
-                /*
-                请求权限
-                 */
+                // 请求权限
                 ActivityCompat.requestPermissions(a2_recordVoice.this,permissions1,REQUEST_STORAGE_PERMISSION);
                 ActivityCompat.requestPermissions(a2_recordVoice.this,permissions2,REQUEST_RECORD_AUDIO_PERMISSION);
+
+
+
+
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -76,6 +92,13 @@ public class a2_recordVoice extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 stopRecording();
+
+            }
+        });
+        shibie.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendVoice();//开一个线程调用腾讯云API
             }
         });
     }
@@ -92,8 +115,6 @@ public class a2_recordVoice extends AppCompatActivity {
     public AudioRecord getAudioRecord() {
         return audioRecord;
     }
-
-
 
     public void startRecording() {
         try {
@@ -247,4 +268,25 @@ public class a2_recordVoice extends AppCompatActivity {
                 break;
         }
     }
+
+    private void  sendVoice(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //调用setConfig函数设置相关参数
+                int res = SASRsdk.setConfig(SecretId, SecretKey, EngSerViceType, SourceType, VoiceFormat, fileName);
+                if (res < 0) {
+                    return;
+                }
+                try {
+                    SASRsdk.sendVoice();//要放在子线程中运行
+                    Log.d("abc","success");
+                }catch (Exception e){
+                    e.printStackTrace();
+                    Log.d("abc","failed");
+                }
+            }
+        }).start();
+    }
+
 }
