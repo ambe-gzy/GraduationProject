@@ -8,6 +8,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -286,7 +287,9 @@ public class a2_recordVoice extends AppCompatActivity {
                 break;
         }
     }
-
+    /*
+    *f发送到腾讯云
+     */
     private void  sendVoice(){
         new Thread(new Runnable() {
             @Override
@@ -298,10 +301,9 @@ public class a2_recordVoice extends AppCompatActivity {
                 }
                 try {
                     SASRsdk.sendVoice();//要放在子线程中运行
-                    Log.d("abc","success");
+                    new RenewUITask().execute(SASRsdk.TAG1);//更新UI
                 }catch (Exception e){
                     e.printStackTrace();
-                    Log.d("abc","failed");
                 }
             }
         }).start();
@@ -325,4 +327,36 @@ public class a2_recordVoice extends AppCompatActivity {
             }
         }
     };
+    //AsysncTask,更新UI
+        public class RenewUITask extends AsyncTask<String,Integer,String> {
+            //参数1:传递进来的数据，参数2：传递到onProgressUpdate的数据，参数3：返回的数据
+        @Override
+        protected void onPreExecute(){//该类被调用前执行，用于界面的初始化
+
+        }
+        @Override
+        protected String doInBackground(String ... params){//此方法所有代码均在子线程中执行
+          //params是一个字符串数组
+            Log.d("aaa",params[0]);
+            return params[0];
+        }
+
+        @Override
+        protected void onPostExecute(String result){//当doInbackground完成时，返回return时，执行此方法，可以利用返回的数据进行一些UI操作
+
+            //可以在此代码更改UI
+            result =result.substring(23);
+            int len = result.length();//获取字符串总长度，不让for循环太久
+            for(int i =0;i!=len;i++) {//真，执行，假，不执行
+                if (result.charAt(i) == '。') {
+                    len = i;
+                    result = result.substring(0, len);
+                    receive.setText(result);
+                    break;
+                }
+            }
+
+        }
+
+    }
 }
