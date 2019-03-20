@@ -24,6 +24,8 @@ import java.io.InputStreamReader;
 public class SASRsdk {
     private static String SecretId, SecretKey, EngSerViceType, SourceType, VoiceFormat, fileURI;
     final static String TAG = "sasrsdk";
+    static String TAG1 ="----------------------------------------no message------------------------------------------------------------------";//返回录音结果
+
     /*
      *将地址和参数整合起来。2019.3.14
      */
@@ -286,7 +288,9 @@ public class SASRsdk {
             if (con != null) {
                 con.disconnect();
                 con = null;
+                TAG1 = sbResult.toString();
             }
+
         }
         return 0;
     }

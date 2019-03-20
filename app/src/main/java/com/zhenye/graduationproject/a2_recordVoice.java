@@ -60,6 +60,12 @@ public class a2_recordVoice extends AppCompatActivity {
     String VoiceFormat = "wav";
     //录音文件名+目录
     private static String fileName = null;
+    /*
+    *UI相关变量
+     */
+    public static final int UPDATE_TEXT = 1;//识别语音并显示
+    private  static String receiveMessage = null;//腾讯云识别的语音信息
+    private  TextView receive;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,17 +75,14 @@ public class a2_recordVoice extends AppCompatActivity {
         Button luyin = (Button)findViewById(R.id.luyin);
         Button luyin_stop = (Button)findViewById(R.id.luyin_stop);
         Button shibie =(Button)findViewById(R.id.recognize_voice);
-        final TextView receive = (TextView)findViewById(R.id.receive);
+        receive = (TextView)findViewById(R.id.textView);
         luyin.setOnClickListener(new View.OnClickListener() {//开始录音
             @Override
             public void onClick(View v) {
                 // 请求权限
                 ActivityCompat.requestPermissions(a2_recordVoice.this,permissions1,REQUEST_STORAGE_PERMISSION);
                 ActivityCompat.requestPermissions(a2_recordVoice.this,permissions2,REQUEST_RECORD_AUDIO_PERMISSION);
-
-
-
-
+                receive.setText("Recoding...");
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -88,17 +91,32 @@ public class a2_recordVoice extends AppCompatActivity {
                 }).start();
             }
         });
-        luyin_stop.setOnClickListener(new View.OnClickListener() {//停止录音
+        luyin_stop.setOnClickListener(new View.OnClickListener() {//停止录音并识别
             @Override
             public void onClick(View v) {
                 stopRecording();
+//                receive.setText("prepared");
+                sendVoice();//开一个线程调用腾讯云API
 
             }
         });
-        shibie.setOnClickListener(new View.OnClickListener() {
+        shibie.setOnClickListener(new View.OnClickListener() {//显示出来
             @Override
             public void onClick(View v) {
-                sendVoice();//开一个线程调用腾讯云API
+            /*
+            将识别到的数据取出来,
+             */
+                receiveMessage = SASRsdk.TAG1;
+                receiveMessage = receiveMessage.substring(23);
+                int len = receiveMessage.length();//获取字符串总长度，不让for循环太久
+                for(int i =0;i!=len;i++){//真，执行，假，不执行
+                    if (receiveMessage.charAt(i) == '。'){
+                        len =i;
+                        receiveMessage = receiveMessage.substring(0,len);
+                        receive.setText(receiveMessage);
+                        break;
+                    }
+                }
             }
         });
     }
@@ -288,5 +306,23 @@ public class a2_recordVoice extends AppCompatActivity {
             }
         }).start();
     }
+    //Handler UI处理
+    private Handler handler = new Handler(){
 
+        public void handleMessage(Message msg){
+            /*
+            将识别到的数据取出来
+             */
+            receiveMessage = SASRsdk.TAG1;
+            receiveMessage = receiveMessage.substring(23);
+            switch (msg.what){
+                case    UPDATE_TEXT:
+                    receive.setText(receiveMessage);
+                    break;
+                default:
+                    break;
+
+            }
+        }
+    };
 }
