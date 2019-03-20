@@ -3,6 +3,7 @@ package com.zhenye.graduationproject;
 
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -13,6 +14,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -64,8 +66,6 @@ public class a2_recordVoice extends AppCompatActivity {
     /*
     *UI相关变量
      */
-    public static final int UPDATE_TEXT = 1;//识别语音并显示
-    private  static String receiveMessage = null;//腾讯云识别的语音信息
     private  TextView receive;
 
     @Override
@@ -96,7 +96,6 @@ public class a2_recordVoice extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 stopRecording();
-//                receive.setText("prepared");
                 sendVoice();//开一个线程调用腾讯云API
 
             }
@@ -104,20 +103,9 @@ public class a2_recordVoice extends AppCompatActivity {
         shibie.setOnClickListener(new View.OnClickListener() {//显示出来
             @Override
             public void onClick(View v) {
-            /*
-            将识别到的数据取出来,
-             */
-                receiveMessage = SASRsdk.TAG1;
-                receiveMessage = receiveMessage.substring(23);
-                int len = receiveMessage.length();//获取字符串总长度，不让for循环太久
-                for(int i =0;i!=len;i++){//真，执行，假，不执行
-                    if (receiveMessage.charAt(i) == '。'){
-                        len =i;
-                        receiveMessage = receiveMessage.substring(0,len);
-                        receive.setText(receiveMessage);
-                        break;
-                    }
-                }
+                Intent intent = new Intent(a2_recordVoice.this,a1_setMessage.class);
+                startActivity(intent);
+
             }
         });
     }
@@ -288,7 +276,9 @@ public class a2_recordVoice extends AppCompatActivity {
         }
     }
     /*
-    *f发送到腾讯云
+    *发送到腾讯云
+    * 获取返回的数据
+    * 开启震动
      */
     private void  sendVoice(){
         new Thread(new Runnable() {
@@ -302,33 +292,17 @@ public class a2_recordVoice extends AppCompatActivity {
                 try {
                     SASRsdk.sendVoice();//要放在子线程中运行
                     new RenewUITask().execute(SASRsdk.TAG1);//更新UI
+                    myVibrator("666");
                 }catch (Exception e){
                     e.printStackTrace();
                 }
             }
         }).start();
     }
-    //Handler UI处理
-    private Handler handler = new Handler(){
-
-        public void handleMessage(Message msg){
-            /*
-            将识别到的数据取出来
-             */
-            receiveMessage = SASRsdk.TAG1;
-            receiveMessage = receiveMessage.substring(23);
-            switch (msg.what){
-                case    UPDATE_TEXT:
-                    receive.setText(receiveMessage);
-                    break;
-                default:
-                    break;
-
-            }
-        }
-    };
-    //AsysncTask,更新UI
-        public class RenewUITask extends AsyncTask<String,Integer,String> {
+    /*
+    *AsysncTask,更新UI
+     */
+    public class RenewUITask extends AsyncTask<String,Integer,String> {
             //参数1:传递进来的数据，参数2：传递到onProgressUpdate的数据，参数3：返回的数据
         @Override
         protected void onPreExecute(){//该类被调用前执行，用于界面的初始化
@@ -359,4 +333,12 @@ public class a2_recordVoice extends AppCompatActivity {
         }
 
     }
+    /*
+    *进行震动操作
+     */
+    public void myVibrator(String message){
+        Vibrator vibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
+        vibrator.vibrate(1000);
+    }
+
 }
