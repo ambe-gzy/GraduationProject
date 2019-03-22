@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Random;
@@ -221,7 +222,9 @@ public class WENZHIsdk {
             while ((line = br.readLine()) != null) {
                 sbResult.append(line);
             }
+
             System.out.println(sbResult.toString());
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {

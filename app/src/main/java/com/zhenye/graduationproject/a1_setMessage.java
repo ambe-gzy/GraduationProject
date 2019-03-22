@@ -11,6 +11,7 @@ import android.widget.TextView;
 import org.litepal.LitePal;
 import org.litepal.crud.DataSupport;
 
+import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -32,8 +33,7 @@ public class a1_setMessage extends AppCompatActivity {
                     message_litepal_set.setMessage(setMessage.getText().toString());
                     message_litepal_set.save();//存数据
                     Message_litepal message_litepal_last = DataSupport.findLast(Message_litepal.class);
-
-                        showMessage.setText( message_litepal_last.getMessage());
+                    showMessage.setText( message_litepal_last.getMessage());
                 }catch (Exception e){
                     e.printStackTrace();
                 }

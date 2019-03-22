@@ -31,6 +31,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.io.UnsupportedEncodingException;
+
 public class a2_recordVoice extends AppCompatActivity {
     /*
     *录音相关变量
@@ -67,7 +69,8 @@ public class a2_recordVoice extends AppCompatActivity {
     *UI相关变量
      */
     private  TextView receive;
-    private String OriginalMessage;
+    private String OriginalMessage; //获取识别到的语音数据
+    private String participleMessage;//获取分词后的语音数据
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,8 +101,7 @@ public class a2_recordVoice extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 stopRecording();
-                sendVoice();//开一个线程调用腾讯云API
-
+                //while (!isRecording);
             }
         });
         shibie.setOnClickListener(new View.OnClickListener() {//显示出来
@@ -107,6 +109,7 @@ public class a2_recordVoice extends AppCompatActivity {
             public void onClick(View v) {
                 Intent intent = new Intent(a2_recordVoice.this,a1_setMessage.class);
                 startActivity(intent);
+
 
             }
         });
@@ -150,6 +153,10 @@ public class a2_recordVoice extends AppCompatActivity {
         }
     }
 
+    /*
+    *1.录音
+    * 2.调用sendVoice发送到腾讯云
+     */
     public void run() {
 
         File dir = new File(Environment.getExternalStorageDirectory()
@@ -179,11 +186,11 @@ public class a2_recordVoice extends AppCompatActivity {
 
                 bufferReadResult = audioRecord.read(buffer, 0,
                         bufferSizeInBytes);
-
                 if(bufferReadResult>0){
                     baos.write(buffer, 0, bufferReadResult);
                 }
             }
+            isRecording = true;
 
           //  Log.i(TAG, "stop recording,file=" + recordingFile.getAbsolutePath());
 
@@ -214,6 +221,8 @@ public class a2_recordVoice extends AppCompatActivity {
                 }
             }
         }
+        //在此处发信息到腾讯云
+        sendVoice();//开一个线程调用腾讯云API
     }
 
     public byte[] getWavHeader(long totalAudioLen){
@@ -283,6 +292,7 @@ public class a2_recordVoice extends AppCompatActivity {
                 break;
         }
     }
+
     /*
     *发送到腾讯云
     * 获取返回的数据
@@ -308,17 +318,20 @@ public class a2_recordVoice extends AppCompatActivity {
             }
         }).start();
     }
+
     /*
-    *发送到安智自然语言处理进行分词
+    * 取出汉字
+    * OriginalMessage:待发送的汉字
+    * 发送到安智自然语言处理进行分词
+    * 将接收到的分词信息进行统计
      */
     private void participle(){
-        OriginalMessage = SASRsdk.TAG1;
-        OriginalMessage =OriginalMessage.substring(23);
+        OriginalMessage = SASRsdk.TAG1.substring(23);
         int len = OriginalMessage.length();//获取字符串总长度，不让for循环太久
         for(int i =0;i!=len;i++) {//真，执行，假，不执行
             if (OriginalMessage.charAt(i) == '。') {
                 len = i;
-                OriginalMessage = OriginalMessage.substring(0, len);
+                OriginalMessage = OriginalMessage.substring(0, len);//获得待发送的message
                 break;
             }
         }
@@ -335,10 +348,12 @@ public class a2_recordVoice extends AppCompatActivity {
                 }catch (Exception e){
                     e.printStackTrace();
                 }
-
             }
         }).start();
+            participleMessage = WENZHIsdk.TAG1;//获取分词个数，并提取出来
+
     }
+
     /*
     *AsysncTask,更新UI
      */
@@ -366,20 +381,58 @@ public class a2_recordVoice extends AppCompatActivity {
                     len = i;
                     result = result.substring(0, len);
                     receive.setText(result);
-                    receive.setText(SASRsdk.TAG2);
                     break;
                 }
+
             }
 
         }
 
     }
+
     /*
     *进行震动操作
      */
     public void myVibrator(String message){
         Vibrator vibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
         vibrator.vibrate(1000);
+    }
+
+    /*
+     * 中文转unicode编码
+     */
+    public static String gbEncoding(final String gbString) {
+        char[] utfBytes = gbString.toCharArray();
+        String unicodeBytes = "";
+        for (int i = 0; i < utfBytes.length; i++) {
+            String hexB = Integer.toHexString(utfBytes[i]);
+            if (hexB.length() <= 2) {
+                hexB = "00" + hexB;
+            }
+            unicodeBytes = unicodeBytes + "\\u" + hexB;
+        }
+        return unicodeBytes;
+    }
+    /*
+     * unicode编码转中文
+     */
+    public static String decodeUnicode(final String dataStr) {
+        int start = 0;
+        int end = 0;
+        final StringBuffer buffer = new StringBuffer();
+        while (start > -1) {
+            end = dataStr.indexOf("\\u", start + 2);
+            String charStr = "";
+            if (end == -1) {
+                charStr = dataStr.substring(start + 2, dataStr.length());
+            } else {
+                charStr = dataStr.substring(start + 2, end);
+            }
+            char letter = (char) Integer.parseInt(charStr, 16); // 16进制parse整形字符串。
+            buffer.append(new Character(letter).toString());
+            start = end;
+        }
+        return buffer.toString();
     }
 
 }
