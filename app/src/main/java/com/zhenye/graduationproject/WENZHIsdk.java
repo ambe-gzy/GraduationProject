@@ -21,9 +21,10 @@ import java.net.HttpURLConnection;
 import java.io.InputStreamReader;
 
 
-public class SASRsdk {
-    private static String SecretId, SecretKey, EngSerViceType, SourceType, VoiceFormat, fileURI;
-    final static String TAG = "sasrsdk";
+public class WENZHIsdk {
+    private static String   Text, SecretId, SecretKey;
+    private static int Code;
+    final static String TAG = "WENZHIsdk";
     static String TAG1 ="----------------------------------------no message------------------------------------------------------------------";//返回录音结果
     static String TAG2 ="1";
 
@@ -45,7 +46,6 @@ public class SASRsdk {
         if (mapReq.size() > 0) {
             strBuilder.setLength(strBuilder.length() - 1);
         }
-
         //System.out.println("sign str: " + strBuilder);
         Log.d(TAG,"formSignstr: " + strBuilder);
 
@@ -74,7 +74,7 @@ public class SASRsdk {
     }
 
     /*
-    生成签名
+    生成  HmacSHA1签名，并添加在后面,后续要进行URL编码
      */
     public static String base64_hmac_sha1(String value, String keyStr) {
         String encoded = "";
@@ -88,8 +88,8 @@ public class SASRsdk {
 
             HMAC.init(secretKey);
             byte[] Hash = HMAC.doFinal(Sequence);
-
             encoded = Base64.getEncoder().encodeToString(Hash);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -122,26 +122,7 @@ public class SASRsdk {
         return base64_hmac_sha1(signStr, secretKey);
     }
 
-    /*
-     *生成userAudioKey
-     */
-    private static String getRandomString(int length) {
-        //定义一个字符串（A-Z，a-z，0-9）即62位；
-        String str = "zxcvbnmlkjhgfdsaqwertyuiopQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
-        //由Random生成随机数
-        Random random = new Random();
-        StringBuffer sb = new StringBuffer();
-        //长度为几就循环几次
-        for (int i = 0; i < length; ++i) {
-            //产生0-61的数字
-            int number = random.nextInt(62);
-            //将产生的数字通过length次承载到sb中
-            sb.append(str.charAt(number));
-        }
-        //将承载的字符转换成字符串
-        Log.d(TAG,"getRandomString   " +sb.toString());
-        return sb.toString();
-    }
+
 
     /*
     传入参数
@@ -149,10 +130,8 @@ public class SASRsdk {
     public static int setConfig(
             String SecretId,
             String SecretKey,
-            String EngSerViceType,
-            String SourceType,
-            String VoiceFormat,
-            String fileURI
+            String Text,
+            int Code
     ) {
         if (SecretId.length() <= 0) {
             // System.out.println("SecretId can not be empty!");
@@ -166,89 +145,43 @@ public class SASRsdk {
 
             return -1;
         }
-        if (EngSerViceType.length() <= 0 || (EngSerViceType.compareTo("8k") != 0 && EngSerViceType.compareTo("16k") != 0)) {
-            //System.out.println("EngSerViceTyp is not valied !");
-            Log.d(TAG,"EngSerViceTyp can not be empty!");
+        if (Text.length() <= 0) {
+            //System.out.println("SecretKey can not be empty!");
+            Log.d(TAG,"Text can not be empty!");
             return -1;
         }
-        if (SourceType.length() <= 0 || (SourceType.compareTo("0") != 0 && SourceType.compareTo("1") != 0)) {
-            //System.out.println("SourceType is not valied !");
-            Log.d(TAG,"SourceType can not be empty!");
+
+
+        if ( Code != 2097152 ) {
+            Log.d(TAG,"Code Error!");
             return -1;
         }
-        if (VoiceFormat.length() <= 0 || (VoiceFormat.compareTo("mp3") != 0 && VoiceFormat.compareTo("wav") != 0)) {
-            System.out.println("VoiceFormat is not valied !");
-            Log.d(TAG,"VoiceFormat can not be empty!");
-            return -1;
-        }
-        if (fileURI.length() <= 0) {
-            //System.out.println("fileURI can not be empty!");
-            Log.d(TAG,"fileURI can not be empty!");
-            return -1;
-        }
-        SASRsdk.SecretId = SecretId;
-        SASRsdk.SecretKey = SecretKey;
-        SASRsdk.EngSerViceType = EngSerViceType;
-        SASRsdk.SourceType = SourceType;
-        SASRsdk.VoiceFormat = VoiceFormat;
-        SASRsdk.fileURI = fileURI;
-       // Log.d(TAG,"setConfig success!");
+
+        WENZHIsdk.SecretId = SecretId;
+        WENZHIsdk.SecretKey = SecretKey;
+        WENZHIsdk.Text = Text;
+        WENZHIsdk.Code = Code;
         return 0;
     }
 
-    public static int sendVoice() {
+    public static int sendMessage() {
         Map<String, String> reqMap = new TreeMap();
-        reqMap.put("Action", "SentenceRecognition");
-        reqMap.put("SecretId", SecretId);
+        reqMap.put("Action", "LexicalAnalysis");//接口功能提供智能分词、词性标注、命名实体识别功能
+        reqMap.put("Region","gz");//广州
         reqMap.put("Timestamp", toUNIXEpoch());
         reqMap.put("Nonce", toUNIXNonce());
-        reqMap.put("Version", "2018-05-22");
-        reqMap.put("ProjectId", "0");
-        reqMap.put("SubServiceType", "2");
-        reqMap.put("EngSerViceType", EngSerViceType);
-        reqMap.put("SourceType", SourceType);
-        if (SourceType.compareTo("0") == 0) {//如果是URL资源
-            try {
-                String Url = URLEncoder.encode(fileURI, "UTF-8");
-                reqMap.put("Url", Url);
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-        } else if (SourceType.compareTo("1") == 0) {//如果是本地资源
-            FileInputStream fileInputStream = null;
-            try {
-                fileInputStream = new FileInputStream(new File(fileURI));
-                int datalen = fileInputStream.available();
-                byte[] dataPacket = new byte[datalen];
-                int n = fileInputStream.read(dataPacket);
-                //System.out.println("n :"+n);
-                String Data = Base64.getEncoder().encodeToString(dataPacket);
-                String DataLen = datalen + "";
-                // System.out.println("data len: "+DataLen);
-                reqMap.put("Data", Data);
-                reqMap.put("DataLen", DataLen);
-
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            return -3;
-        }
-        reqMap.put("VoiceFormat", VoiceFormat);
-        String UsrAudioKey = getRandomString(16);
-        reqMap.put("UsrAudioKey", UsrAudioKey);//唯一用户识别标识
-
-
-        String _url = "POSTaai.tencentcloudapi.com/?";//生成签名
+        reqMap.put("SecretId", SecretId);
+        reqMap.put("code","2097152");
+        reqMap.put("text",Text);
+        reqMap.put("SignatureMethod","HmacSHA1");
+        String _url = "POSTwenzhi.api.qcloud.com/v2/index.php?";//生成签名用的地址
         String signstr = formSignstr(_url, reqMap);//将地址和参数整合
-        // System.out.println("signstr: " + signstr);
         String signing = createSign(signstr, SecretKey);//将地址和参数和签名整合
-        // System.out.println("签名: " + signing);
         String tmppostdata = formPostbody(reqMap);//将参数整合起来
         String sign = "";
         try {
             sign = URLEncoder.encode(signing, "UTF-8");//将签名转成UTF-8编码
+            Log.d(TAG,"sign"+sign);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -260,7 +193,7 @@ public class SASRsdk {
         Log.d(TAG,"POST:"+post);
         TAG2 = post;
 
-        String serverUrl = "https://aai.tencentcloudapi.com";
+        String serverUrl = "https://wenzhi.api.qcloud.com/v2/index.php";
 
         HttpURLConnection con = null;
         StringBuilder sbResult = new StringBuilder();
@@ -271,7 +204,7 @@ public class SASRsdk {
             con.setDoOutput(true);
             con.setDoInput(true);
             con.setUseCaches(false);//不用缓存
-            con.setRequestProperty("Host", "aai.tencentcloudapi.com");//发送请求报文头 的参数
+            con.setRequestProperty("Host", "wenzhi.api.qcloud.com");//发送请求报文头 的参数
             con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             con.setRequestProperty("Charset", "utf-8");
 

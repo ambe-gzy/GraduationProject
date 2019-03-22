@@ -35,7 +35,7 @@ public class a2_recordVoice extends AppCompatActivity {
     /*
     *录音相关变量
      */
-    private static final String TAG = "sound";
+    private static final String TAG = "a2_recordVoice";
     private AudioRecord audioRecord = null;
     private boolean isRecording;
     private int channelConfiguration = AudioFormat.CHANNEL_IN_MONO;
@@ -67,6 +67,7 @@ public class a2_recordVoice extends AppCompatActivity {
     *UI相关变量
      */
     private  TextView receive;
+    private String OriginalMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +77,7 @@ public class a2_recordVoice extends AppCompatActivity {
         Button luyin = (Button)findViewById(R.id.luyin);
         Button luyin_stop = (Button)findViewById(R.id.luyin_stop);
         Button shibie =(Button)findViewById(R.id.recognize_voice);
+        Button fenci =(Button)findViewById(R.id.participle_Button);
         receive = (TextView)findViewById(R.id.textView);
         luyin.setOnClickListener(new View.OnClickListener() {//开始录音
             @Override
@@ -106,6 +108,12 @@ public class a2_recordVoice extends AppCompatActivity {
                 Intent intent = new Intent(a2_recordVoice.this,a1_setMessage.class);
                 startActivity(intent);
 
+            }
+        });
+        fenci.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                participle();
             }
         });
     }
@@ -153,7 +161,7 @@ public class a2_recordVoice extends AppCompatActivity {
         //        + ".wav");
         File recordingFile = new File(dir, "ivr_test1.wav"
         );
-        Log.i(TAG, "start recording,file=" + recordingFile.getAbsolutePath());
+        // Log.i(TAG, "start recording,file=" + recordingFile.getAbsolutePath());
         fileName = recordingFile.getAbsolutePath();
         OutputStream out = null;
         ByteArrayOutputStream baos = null;
@@ -177,11 +185,11 @@ public class a2_recordVoice extends AppCompatActivity {
                 }
             }
 
-            Log.i(TAG, "stop recording,file=" + recordingFile.getAbsolutePath());
+          //  Log.i(TAG, "stop recording,file=" + recordingFile.getAbsolutePath());
 
             buffer = baos.toByteArray();
 
-            Log.i(TAG, "audio byte len="+buffer.length);
+          //  Log.i(TAG, "audio byte len="+buffer.length);
 
             out = new FileOutputStream(recordingFile);
             out.write(getWavHeader(buffer.length));
@@ -291,11 +299,43 @@ public class a2_recordVoice extends AppCompatActivity {
                 }
                 try {
                     SASRsdk.sendVoice();//要放在子线程中运行
-                    new RenewUITask().execute(SASRsdk.TAG1);//更新UI
+                    OriginalMessage = SASRsdk.TAG1;
+                    new RenewUITask().execute(OriginalMessage);//更新UI
                     myVibrator("666");
                 }catch (Exception e){
                     e.printStackTrace();
                 }
+            }
+        }).start();
+    }
+    /*
+    *发送到安智自然语言处理进行分词
+     */
+    private void participle(){
+        OriginalMessage = SASRsdk.TAG1;
+        OriginalMessage =OriginalMessage.substring(23);
+        int len = OriginalMessage.length();//获取字符串总长度，不让for循环太久
+        for(int i =0;i!=len;i++) {//真，执行，假，不执行
+            if (OriginalMessage.charAt(i) == '。') {
+                len = i;
+                OriginalMessage = OriginalMessage.substring(0, len);
+                break;
+            }
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+              //  int res = WENZHIsdk.setConfig("AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE","Gu5t9xGARNpq86cd98joQYCN3EXAMPLE",OriginalMessage,2097152);
+                int res = WENZHIsdk.setConfig(SecretId,SecretKey,OriginalMessage,2097152);
+                if (res < 0) {
+                    return;
+                }
+                try {
+                    WENZHIsdk.sendMessage();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+
             }
         }).start();
     }
@@ -326,6 +366,7 @@ public class a2_recordVoice extends AppCompatActivity {
                     len = i;
                     result = result.substring(0, len);
                     receive.setText(result);
+                    receive.setText(SASRsdk.TAG2);
                     break;
                 }
             }
